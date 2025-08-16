@@ -23,7 +23,7 @@ from persiantools.digits import fa_to_en, ar_to_fa
 
 #Variables
 
-admin_ids = [403949029, 1828929996]
+admin_ids = [403949029, 1828929996, 238079968]
 setting_payment_message_id = 0
 signup_payment_message_ids = {}
 CHANNEL_ID = 4858274378
@@ -191,6 +191,7 @@ async def start(*, message):
 
 
 async def start_core(message, user_id):
+    
     if await check_user_membership(user_id):
         await message.reply(
             StartPanel_Informations_Datas["description"],
@@ -200,14 +201,14 @@ async def start_core(message, user_id):
         )    
     else:
         await message.reply(
-            "سلام به بات ثبت نام در کاروان زیارتی خوش امدید"
-            "برای ادامه ثبت نام اول عضو کانال شوید و بعد روی دکمه(عضو شدم)کلیک کنید.\n",
+            "برای ادامه کار با ربات لطفا داخل چنل زیر عضو شید😊✨",
             InlineKeyboard(
                 [InlineKeyboardButton('کانال کاروان', url='https://ble.ir/karevan_ziarati')],
                 [('عضو شدم.', 'join')],
             )
         )
-
+    remaining_capacity = StartPanel_Informations_Datas["signup_capacity"] - StartPanel_Informations_Datas["signup_count"]
+    await bot.send_message(message.chat.id, f"ظریفت باقی مانده: {remaining_capacity} نفر ")
     message.author.set_state("")
     User_SignUp_Data.pop(user_id, None)
 
@@ -323,23 +324,23 @@ async def callback_handler(callback_query):
         if await check_user_membership(user_id): 
 
             await bot.delete_message(callback_query.message.chat.id , callback_query.message.id)
-            await callback_query.answer('شما عضو کانال هستید. حالا میتوانید برای ثبت نام اقدام کنید.')
+            await callback_query.answer('شما عضو کانال هستید. \n حالا میتوانید برای ثبت نام اقدام کنید.')
             await start_core(callback_query.message, user_id)
             callback_query.author.set_state("")
 
         else:
-            await callback_query.answer('شما عضو کانال نیستید. لطفاً ابتدا عضو کانال شوید.')
+            await callback_query.answer('شما عضو کانال نیستید. \n لطفاً ابتدا عضو کانال شوید.')
             callback_query.author.set_state("")
 
     elif callback_query.data == "SignUp":
-
         if (StartPanel_Informations_Datas["trip_is_start"]):
             User_SignUp_Data.pop(user_id, None)
-            await bot.send_message(chat_id= callback_query.message.chat.id, text= "اسم و فامیلتون رو وارد کنید.")
+            markup=InlineKeyboard([("لغو ثبت نام❌", "cancel_signup")])
+            await bot.send_message(chat_id= callback_query.message.chat.id, text= "لطفاً نام و نام‌خانوادگی خود را وارد نمایید🙏📝", reply_markup=markup)
             callback_query.author.set_state("NAME")
 
         else:
-            await callback_query.answer("ثبت نام به پایان رسیده لطفا تا سفر بعد صبر کنید.")
+            await callback_query.answer("ثبت نام به پایان رسیده لطفا تا سفر بعد صبر کنید🙏💖")
             callback_query.author.set_state("")
 
 
@@ -379,7 +380,7 @@ async def callback_handler(callback_query):
 
         User_SignUp_Data.pop(user_id, None)
 
-        await callback_query.answer("ثبت نام با موفقیت کامل شد.")
+        await callback_query.answer("ثبت نام با موفقیت کامل شد✅✨")
         await bot.send_message(callback_query.message.chat.id, "اگر می‌خواهید دوستان یا آشنایان خود را ثبت نام کنید از دستور /start استفاده کنید.")
 
         if StartPanel_Informations_Datas["signup_count"] >= StartPanel_Informations_Datas["signup_capacity"]:
@@ -389,15 +390,6 @@ async def callback_handler(callback_query):
 
 
     elif callback_query.data == "cancel_signup":
-
-        invoice_message_id = signup_payment_message_ids.pop(user_id, None)
-        if invoice_message_id:
-            try:
-                await bot.delete_message(callback_query.message.chat.id, invoice_message_id)
-            except ForbiddenError:
-                print("⚠️ Bot was blocked or message not deletable.")
-            except Exception as e:
-                print(f"❌ Other error deleting message: {e}")
 
         User_SignUp_Data.pop(user_id, None)
 
@@ -427,7 +419,7 @@ async def remove_passenger_state(message):
         await message.reply("مسافر با موفقیت حذف شد.")
 
     except (ValueError, IndexError):
-        await message.reply("شماره وارد شده معتبر نیست. لطفاً دوباره تلاش کنید.")
+        await message.reply("شماره وارد شده معتبر نیست. \n لطفاً دوباره تلاش کنید.")
 
     message.author.set_state("")
 
@@ -558,7 +550,8 @@ async def payment_confirmation_state(message):
 @bot.on_message(at_state("NAME"))
 async def name_state(message):
     User_SignUp_Data[message.author.id] = [message.text]
-    await bot.send_message(chat_id= message.chat.id, text= "شماره تماس رو وارد کنید.")
+    markup=InlineKeyboard([("لغو ثبت نام❌", "cancel_signup")])
+    await bot.send_message(chat_id= message.chat.id, text= "برای ارتباط بهتر، شماره همراه خود را وارد کنید☎️📞", reply_markup=markup)
     message.author.set_state("PHONE_NUMBER")
 
 
@@ -566,37 +559,38 @@ async def name_state(message):
 async def phone_number_state(message):
     if validate_phone_number(message.text):
         User_SignUp_Data[message.author.id].append(persian_to_english_digits(message.text))
-
-        await bot.send_message(chat_id= message.chat.id, text= "کد ملیتون رو وارد کنید.")
+        markup=InlineKeyboard([("لغو ثبت نام❌", "cancel_signup")])
+        await bot.send_message(chat_id= message.chat.id, text= "برای احراز هویت، لطفاً کد ملی معتبر خود را ثبت کنید📲🔐", reply_markup=markup)
         message.author.set_state("CODE_MELI")
     else:
-        await message.reply("شماره تلفن معتبر نیست دوباره تلاش کنید")
+        await message.reply("شماره تلفن وارد شده معتبر نیست. لطفاً مجدداً بررسی و وارد نمایید📱⚠️")
 
 
 @bot.on_message(at_state("CODE_MELI"))
 async def code_meli_state(message):
     if validate_code_meli(message.text):
         User_SignUp_Data[message.author.id].append(persian_to_english_digits(message.text))
-        await bot.send_message(chat_id= message.chat.id, text= "تاریخ تولدت رو با فرمت 01-06-1367 وارد کن.")
+        markup=InlineKeyboard([("لغو ثبت نام❌", "cancel_signup")])
+        await bot.send_message(chat_id= message.chat.id, text= "برای تکمیل اطلاعات، تاریخ تولد خود را به صورت 1364/06/15 وارد کنید🙏✨", reply_markup=markup)
         message.author.set_state("BIRTHDATE")
     else:
-        await message.reply("کد ملیت معتبر نیست دوباره تلاش کن.")
+        await message.reply("متأسفیم! کد ملی شما تأیید نشد. لطفاً مجدداً تلاش نمایید🙏🔄")
 
 
 @bot.on_message(at_state("BIRTHDATE"))
 async def age_state(message):
-    data_str = message.text.replace("/", "-")
-
+    data_str = message.text
     try:
-        year, month, day = map(int, data_str.split("-"))
-        shamsi_data = str(jdatetime.date(year, month, day))
+        year, month, day = map(int, data_str.split("/"))
+        shamsi_date = jdatetime.date(year, month, day)
+        shamsi_data = f"{shamsi_date.year}/{shamsi_date.month}/{shamsi_date.day}"
         User_SignUp_Data[message.author.id].append(shamsi_data)
-
-        await bot.send_message(message.chat.id, "عکسی واضح از صفحه اول گذرنامتون ارسال کنید")  
+        markup=InlineKeyboard([("لغو ثبت نام❌", "cancel_signup")])
+        await bot.send_message(message.chat.id, "لطفاً یک تصویر واضح و خوانا از صفحه اول گذرنامه خود ارسال نمایید📸🛂", reply_markup=markup)  
         message.author.set_state("PASSPORT")      
 
     except ValueError:
-        await message.reply("تاریخ تولدتون معتبر نیست دوباره تلاش کنید.")
+        await message.reply("تاریخ تولد وارد شده معتبر نیست. لطفاً با فرمت صحیح (مثلاً 1375/05/15) مجدداً وارد نمایید📅⚠️")
 
 
 @bot.on_message(at_state("PASSPORT"))
@@ -609,19 +603,18 @@ async def passport_state(message):
 
         data = User_SignUp_Data[message.author.id]
         confirmation_message = (
-            f"اسم و فامیلیتون: {data[0]}, "
-            f"شماره تماستون: {data[1]}, "
-            f"کد ملیتون: {data[2]}, "
-            f"تاریخ تولدتون: {data[3]}\n"
-            f"اطلاعاتتون درسته؟ (بله/خیر)"
+            f"نام و نام‌خانوادگی: {data[0]}\n"
+            f"شماره تماس: {data[1]}\n"
+            f"کد ملی: {data[2]}\n "
+            f"تاریخ تولد: {data[3]}\n"
+            f"موارد بالا را تایید میکنید؟ (بله/خیر)"
         )
         await bot.send_message(chat_id=message.chat.id, text=confirmation_message)
 
         message.author.set_state("SIGNUP_CONFIRMATION")
 
     else:
-        await bot.send_message(message.chat.id, "پیامی که ارسال کردی یه عکس نبود لطفا دوباره امتحان کن")
-
+        await bot.send_message(message.chat.id, "عکس ارسال شده نامعتبر است. لطفاً تصویر واضحی از گذرنامه ارسال کنید📸🔄")
 
 @bot.on_message(at_state("SIGNUP_CONFIRMATION"))
 async def SignUp_Confirmation_state(message):
@@ -652,13 +645,11 @@ async def payment_state(message):
 
     await bot.send_message(
         chat_id=message.chat.id,
-        text="بعد از انجام پرداخت روی دکمه زیر کلیک کنید تا ثبت نام شما نهایی شود",
+        text="لطفاً پس از انجام پرداخت، روی دکمه «تکمیل ثبت‌نام» کلیک کنید تا فرآیند شما نهایی شود💳➡️🖱️",
         reply_markup=InlineKeyboard(
-            [("تکمیل ثبت‌نام", "confirm_signup")],
-            [("لغو ثبت‌نام", "cancel_signup")]
+            [("تکمیل ثبت‌نام", "confirm_signup")]
         )
     )
-
     signup_payment_message_ids[message.author.id] = payment_message.id
 
 
