@@ -1,6 +1,6 @@
 {
   "description": "تست",
   "signup_capacity": 13,
-  "signup_count": 0,
-  "trip_is_start": true
+  "signup_count": 2,
+  "trip_is_start": false
 }
